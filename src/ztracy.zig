@@ -90,6 +90,51 @@ const tracy_stub = struct {
         return .{};
     }
 
+    pub inline fn ZoneAlloc(src: Src) ZoneCtx {
+        _ = src;
+        return .{};
+    }
+    pub inline fn ZoneAllocN(src: Src, name: []const u8) ZoneCtx {
+        _ = src;
+        _ = name;
+        return .{};
+    }
+    pub inline fn ZoneAllocC(src: Src, color: u32) ZoneCtx {
+        _ = src;
+        _ = color;
+        return .{};
+    }
+    pub inline fn ZoneAllocNC(src: Src, name: []const u8, color: u32) ZoneCtx {
+        _ = src;
+        _ = name;
+        _ = color;
+        return .{};
+    }
+    pub inline fn ZoneAllocS(src: Src, depth: i32) ZoneCtx {
+        _ = src;
+        _ = depth;
+        return .{};
+    }
+    pub inline fn ZoneAllocNS(src: Src, name: []const u8, depth: i32) ZoneCtx {
+        _ = src;
+        _ = name;
+        _ = depth;
+        return .{};
+    }
+    pub inline fn ZoneAllocCS(src: Src, color: u32, depth: i32) ZoneCtx {
+        _ = src;
+        _ = color;
+        _ = depth;
+        return .{};
+    }
+    pub inline fn ZoneAllocNCS(src: Src, name: []const u8, color: u32, depth: i32) ZoneCtx {
+        _ = src;
+        _ = name;
+        _ = color;
+        _ = depth;
+        return .{};
+    }
+
     pub inline fn Alloc(ptr: ?*const anyopaque, size: usize) void {
         _ = ptr;
         _ = size;
@@ -345,6 +390,37 @@ const tracy_full = struct {
         }
     }
 
+    inline fn initZoneAlloc(src: Src, name: ?[]const u8, color: u32, depth: c_int) ZoneCtx {
+        const srcloc = if (name) |n| c.___tracy_alloc_srcloc_name(
+            src.line,
+            src.file.ptr,
+            src.file.len,
+            src.fn_name.ptr,
+            src.fn_name.len,
+            n.ptr,
+            n.len,
+            color,
+        ) else c.___tracy_alloc_srcloc(
+            src.line,
+            src.file.ptr,
+            src.file.len,
+            src.fn_name.ptr,
+            src.fn_name.len,
+            color,
+        );
+        const zone = if (has_callstack_support)
+            c.___tracy_emit_zone_begin_alloc_callstack(srcloc, depth, 1)
+        else
+            c.___tracy_emit_zone_begin_alloc(srcloc, 1);
+
+        if (debug_verify_stack_order) {
+            stack_depth += 1;
+            return ZoneCtx{ ._zone = zone, ._token = stack_depth };
+        } else {
+            return ZoneCtx{ ._zone = zone, ._token = {} };
+        }
+    }
+
     pub inline fn SetThreadName(name: [*:0]const u8) void {
         c.___tracy_set_thread_name(name);
     }
@@ -372,6 +448,31 @@ const tracy_full = struct {
     }
     pub inline fn ZoneNCS(comptime src: Src, name: [*:0]const u8, color: u32, depth: i32) ZoneCtx {
         return initZone(src, name, color, depth);
+    }
+
+    pub inline fn ZoneAlloc(src: Src) ZoneCtx {
+        return initZoneAlloc(src, null, 0, callstack_depth);
+    }
+    pub inline fn ZoneAllocN(src: Src, name: []const u8) ZoneCtx {
+        return initZoneAlloc(src, name, 0, callstack_depth);
+    }
+    pub inline fn ZoneAllocC(src: Src, color: u32) ZoneCtx {
+        return initZoneAlloc(src, null, color, callstack_depth);
+    }
+    pub inline fn ZoneAllocNC(src: Src, name: []const u8, color: u32) ZoneCtx {
+        return initZoneAlloc(src, name, color, callstack_depth);
+    }
+    pub inline fn ZoneAllocS(src: Src, depth: i32) ZoneCtx {
+        return initZoneAlloc(src, null, 0, depth);
+    }
+    pub inline fn ZoneAllocNS(src: Src, name: []const u8, depth: i32) ZoneCtx {
+        return initZoneAlloc(src, name, 0, depth);
+    }
+    pub inline fn ZoneAllocCS(src: Src, color: u32, depth: i32) ZoneCtx {
+        return initZoneAlloc(src, null, color, depth);
+    }
+    pub inline fn ZoneAllocNCS(src: Src, name: []const u8, color: u32, depth: i32) ZoneCtx {
+        return initZoneAlloc(src, name, color, depth);
     }
 
     pub inline fn Alloc(ptr: ?*const anyopaque, size: usize) void {
